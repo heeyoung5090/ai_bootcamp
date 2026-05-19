@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 부트캠프 지원 현황 관리</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #eef2f8;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text-1: #1a202c;
+  --text-2: #4a5568;
+  --text-3: #94a3b8;
+  --accent: #e8566a;
+  --accent-lt: #fce7ea;
+  --blue: #3b82f6;
+  --blue-lt: #dbeafe;
+  --purple: #7c3aed;
+  --purple-lt: #ede9fe;
+  --green: #059669;
+  --sh: 0 1px 3px rgba(0,0,0,.08);
+  --sh-md: 0 4px 12px rgba(0,0,0,.08);
+  --r: 12px;
+  --r-sm: 8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh}
+
+/* ── 로그인 ──────────────────────────────── */
+#loginPage{
+  position:fixed;inset:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  display:flex;align-items:center;justify-content:center;z-index:999
+}
+.login-box{
+  background:#fff;border-radius:20px;padding:52px 44px;width:380px;
+  box-shadow:0 24px 64px rgba(0,0,0,.28);text-align:center
+}
+.login-logo{
+  width:60px;height:60px;border-radius:16px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;color:#fff;font-size:22px;font-weight:800
+}
+.login-title{font-size:20px;font-weight:700;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--text-3);margin-bottom:32px}
+.login-inp{
+  width:100%;padding:13px 16px;border:1.5px solid var(--border);
+  border-radius:var(--r-sm);font-size:15px;outline:none;margin-bottom:12px;
+  transition:border-color .2s
+}
+.login-inp:focus{border-color:#667eea}
+.login-btn{
+  width:100%;padding:14px;background:linear-gradient(135deg,#667eea,#764ba2);
+  color:#fff;border:none;border-radius:var(--r-sm);font-size:15px;
+  font-weight:700;cursor:pointer;transition:opacity .2s
+}
+.login-btn:hover{opacity:.9}
+.login-err{color:#e53e3e;font-size:13px;margin-top:10px;min-height:20px}
+
+/* ── 알림 배너 ───────────────────────────── */
+#alertBanner{
+  background:linear-gradient(90deg,#e8566a,#f97316);
+  color:#fff;padding:13px 24px;text-align:center;
+  font-weight:600;font-size:14px;display:none;
+  animation:slideDown .3s ease
+}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
+/* ── 헤더 ───────────────────────────────── */
+header{
+  background:#fff;border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100;box-shadow:var(--sh)
+}
+.h-logo{
+  width:34px;height:34px;border-radius:8px;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:12px;font-weight:800;flex-shrink:0
+}
+.h-title{font-size:17px;font-weight:700;flex:1}
+.h-meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-2)}
+.h-updated{color:var(--text-3);font-size:12px}
+.btn-refresh{
+  padding:7px 14px;background:#fff;border:1.5px solid var(--border);
+  border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;
+  transition:all .2s;white-space:nowrap
+}
+.btn-refresh:hover{border-color:var(--accent);color:var(--accent)}
+.countdown{
+  background:var(--accent-lt);color:var(--accent);
+  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap
+}
+
+/* ── 레이아웃 ────────────────────────────── */
+main{padding:24px;max-width:1440px;margin:0 auto}
+
+/* ── 카드 ───────────────────────────────── */
+.card{background:#fff;border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--border)}
+
+/* ── 통계 그리드 ─────────────────────────── */
+.stat-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:14px}
+.stat-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.stat-grid-6{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}
+
+.stat-card{padding:24px 28px}
+.stat-card.lg{padding:30px 36px}
+.stat-card.sm{padding:18px 16px;text-align:center}
+
+.stat-lbl{font-size:12px;font-weight:600;color:var(--text-3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px}
+.stat-val{font-size:44px;font-weight:800;line-height:1;color:var(--text-1)}
+.stat-card.lg .stat-val{font-size:56px}
+.stat-card.sm .stat-val{font-size:30px}
+.stat-sub{font-size:11px;color:var(--text-3);margin-top:4px}
+
+.badge-code{
+  display:inline-block;padding:3px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;margin-bottom:8px
+}
+.badge-a{background:var(--blue-lt);color:var(--blue)}
+.badge-b{background:var(--purple-lt);color:var(--purple)}
+
+/* ── 차트 영역 ───────────────────────────── */
+.charts-grid{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:24px}
+.charts-side{display:flex;flex-direction:column;gap:16px}
+.chart-card{padding:24px}
+.chart-hd{margin-bottom:20px}
+.chart-big-num{font-size:38px;font-weight:800;color:var(--text-1)}
+.chart-big-lbl{font-size:13px;color:var(--text-3);margin-left:6px}
+.chart-title{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:14px}
+
+/* ── 검색 ───────────────────────────────── */
+.search-card{padding:20px 24px;margin-bottom:16px}
+.search-title{font-size:15px;font-weight:600;margin-bottom:16px}
+.search-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.filt-grp{display:flex;flex-direction:column;gap:5px}
+.filt-lbl{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.3px}
+.inp,.sel{
+  padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--r-sm);
+  font-size:13px;outline:none;background:#fff;transition:border-color .2s;
+  font-family:inherit
+}
+.inp{min-width:150px}.inp.sm{min-width:130px}
+.sel{min-width:110px;cursor:pointer}
+.inp:focus,.sel:focus{border-color:#667eea}
+.search-btns{display:flex;gap:8px;margin-left:auto}
+.btn-s{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:13px;font-weight:700;cursor:pointer}
+.btn-r{padding:9px 18px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:13px;cursor:pointer}
+
+/* ── 테이블 ──────────────────────────────── */
+.tbl-card{padding:20px 24px;margin-bottom:24px}
+.tbl-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.tbl-title{font-size:15px;font-weight:600}
+.tbl-cnt{font-size:13px;color:var(--text-3)}
+.tbl-cnt span{color:var(--accent);font-weight:700}
+.tbl-wrap{overflow-x:auto;border-radius:var(--r-sm);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1600px}
+th{
+  background:#f8fafc;padding:10px 14px;text-align:left;
+  font-size:11px;font-weight:700;color:var(--text-3);
+  border-bottom:2px solid var(--border);white-space:nowrap;
+  letter-spacing:.3px;text-transform:uppercase
+}
+td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top;color:var(--text-2)}
+tr:hover td{background:#fafbff}
+tr:last-child td{border-bottom:none}
+
+.pill{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.pill-b{background:var(--blue-lt);color:var(--blue)}
+.pill-p{background:var(--purple-lt);color:var(--purple)}
+
+.chip-wrap{display:flex;flex-wrap:wrap;gap:3px}
+.chip{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.chip-a{background:var(--blue-lt);color:var(--blue)}
+.chip-b{background:var(--purple-lt);color:var(--purple)}
+
+.credit-cell{font-size:11px;color:var(--text-3);max-width:160px;word-break:break-all;line-height:1.5}
+.empty-td{text-align:center;color:var(--text-3);padding:48px!important;font-size:14px}
+
+
+
+/* ── 반응형 ──────────────────────────────── */
+@media(max-width:900px){
+  .stat-grid-3,.stat-grid-4,.stat-grid-6{grid-template-columns:repeat(2,1fr)}
+  .charts-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── 로그인 ─────────────────────────────── -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">AI</div>
+    <div class="login-title">AI 부트캠프</div>
+    <div class="login-sub">지원 현황 관리 시스템</div>
+    <input type="password" id="pwInp" class="login-inp"
+      placeholder="비밀번호를 입력하세요"
+      onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" onclick="login()">로그인</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ── 대시보드 ───────────────────────────── -->
+<div id="dashboard" style="display:none">
+
+  <div id="alertBanner"></div>
+
+  <header>
+    <div class="h-logo">AI</div>
+    <div class="h-title">지원 현황 관리</div>
+    <div class="h-meta">
+      <span class="h-updated" id="lastUpdated">갱신 대기 중</span>
+      <button class="btn-refresh" onclick="addLog('수동 새로고침');fetchData()">새로고침</button>
+      <div class="countdown" id="countdown">30초 후 갱신</div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── 통계 Row 1 : 총/오늘/7일 ────────── -->
+    <div class="stat-grid-3">
+      <div class="card stat-card lg">
+        <div class="stat-lbl">총 지원자 수</div>
+        <div class="stat-val" id="sTotal">—</div>
+      </div>
+      <div class="card stat-card lg">
+        <div class="stat-lbl">오늘 지원자 수</div>
+        <div class="stat-val" id="sToday">—</div>
+      </div>
+      <div class="card stat-card lg">
+        <div class="stat-lbl">최근 7일 지원자 수</div>
+        <div class="stat-val" id="sWeek">—</div>
+      </div>
+    </div>
+
+    <!-- ── 통계 Row 2 : 초급/중급 현황 ─────── -->
+    <div class="stat-grid-4">
+      <div class="card stat-card">
+        <div class="stat-lbl">초급 / 중급</div>
+        <div class="stat-val" style="font-size:36px" id="sLevel">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-lbl">초급 신청자</div>
+        <div class="stat-val" id="sBasic">—</div>
+        <div class="stat-sub">Basic Track</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-lbl">중급 신청자</div>
+        <div class="stat-val" id="sAdv">—</div>
+        <div class="stat-sub">Advanced Track</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-lbl">참여 학과 수</div>
+        <div class="stat-val" id="sDept">—</div>
+        <div class="stat-sub">Departments</div>
+      </div>
+    </div>
+
+    <!-- ── 통계 Row 3 : 세부 과목 ────────────── -->
+    <div class="stat-grid-6">
+      <div class="card stat-card sm">
+        <div><span class="badge-code badge-a">A1</span></div>
+        <div class="stat-lbl">수리AI</div>
+        <div class="stat-val" id="cA1">—</div>
+        <div class="stat-sub">초급</div>
+      </div>
+      <div class="card stat-card sm">
+        <div><span class="badge-code badge-a">A2</span></div>
+        <div class="stat-lbl">AI프로그래밍</div>
+        <div class="stat-val" id="cA2">—</div>
+        <div class="stat-sub">초급</div>
+      </div>
+      <div class="card stat-card sm">
+        <div><span class="badge-code badge-a">A3</span></div>
+        <div class="stat-lbl">AI데이터과학기초</div>
+        <div class="stat-val" id="cA3">—</div>
+        <div class="stat-sub">초급</div>
+      </div>
+      <div class="card stat-card sm">
+        <div><span class="badge-code badge-b">B1</span></div>
+        <div class="stat-lbl">AI데이터과학응용</div>
+        <div class="stat-val" id="cB1">—</div>
+        <div class="stat-sub">중급</div>
+      </div>
+      <div class="card stat-card sm">
+        <div><span class="badge-code badge-b">B2</span></div>
+        <div class="stat-lbl">AI핵심이론및실습</div>
+        <div class="stat-val" id="cB2">—</div>
+        <div class="stat-sub">중급</div>
+      </div>
+      <div class="card stat-card sm">
+        <div><span class="badge-code badge-b">B3</span></div>
+        <div class="stat-lbl">산업분야AX기술응용</div>
+        <div class="stat-val" id="cB3">—</div>
+        <div class="stat-sub">중급</div>
+      </div>
+    </div>
+
+    <!-- ── 차트 ───────────────────────────── -->
+    <div class="charts-grid">
+      <!-- 라인 차트 -->
+      <div class="card chart-card">
+        <div class="chart-hd">
+          <span class="chart-big-num" id="chartTotal">0</span>
+          <span class="chart-big-lbl">총 지원자 수</span>
+        </div>
+        <canvas id="lineChart" height="200"></canvas>
+      </div>
+      <!-- 오른쪽: 바 + 도넛 -->
+      <div class="charts-side">
+        <div class="card chart-card" style="flex:1">
+          <div class="chart-title">학과별 지원현황</div>
+          <canvas id="barChart" height="150"></canvas>
+        </div>
+        <div class="card chart-card" style="flex:1">
+          <div class="chart-title">과정별 지원현황 (초급 / 중급)</div>
+          <canvas id="donutChart" height="150"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 검색 ──────────────────────────── -->
+    <div class="card search-card">
+      <div class="search-title">지원자 검색</div>
+      <div class="search-row">
+        <div class="filt-grp">
+          <div class="filt-lbl">검색어</div>
+          <input class="inp" id="fKeyword" placeholder="이름 · 학번 · 학과">
+        </div>
+        <div class="filt-grp">
+          <div class="filt-lbl">기간 시작</div>
+          <input type="date" class="inp sm" id="fFrom">
+        </div>
+        <div class="filt-grp">
+          <div class="filt-lbl">기간 종료</div>
+          <input type="date" class="inp sm" id="fTo">
+        </div>
+        <div class="filt-grp">
+          <div class="filt-lbl">수준</div>
+          <select class="sel" id="fLevel">
+            <option value="">전체</option>
+            <option value="초급">초급</option>
+            <option value="중급">중급</option>
+          </select>
+        </div>
+        <div class="filt-grp">
+          <div class="filt-lbl">학과</div>
+          <input class="inp" id="fDept" placeholder="학과명">
+        </div>
+        <div class="filt-grp">
+          <div class="filt-lbl">과목</div>
+          <select class="sel" id="fCourse">
+            <option value="">전체 과목</option>
+            <option value="A1">A1 수리AI</option>
+            <option value="A2">A2 AI프로그래밍</option>
+            <option value="A3">A3 AI데이터과학기초</option>
+            <option value="B1">B1 AI데이터과학응용</option>
+            <option value="B2">B2 AI핵심이론및실습</option>
+            <option value="B3">B3 산업분야AX기술응용</option>
+          </select>
+        </div>
+        <div class="search-btns">
+          <button class="btn-s" onclick="applyFilter()">검색</button>
+          <button class="btn-r" onclick="resetFilter()">초기화</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 결과 테이블 ───────────────────── -->
+    <div class="card tbl-card">
+      <div class="tbl-hd">
+        <div class="tbl-title">검색 결과</div>
+        <div class="tbl-cnt">총 <span id="resultCnt">0</span>건</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>접수시각</th>
+              <th>학부(과)</th>
+              <th>학번</th>
+              <th>학년</th>
+              <th>이름</th>
+              <th>휴대폰번호</th>
+              <th>신청영역</th>
+              <th>초급 신청 과목</th>
+              <th>중급 신청 과목</th>
+              <th>A1 인정교과목</th>
+              <th>A2 인정교과목</th>
+              <th>A3 인정교과목</th>
+              <th>B1 인정교과목</th>
+              <th>B2 인정교과목</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td class="empty-td" colspan="15">API에 연결하면 데이터가 표시됩니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /dashboard -->
+
+<script>
+/* ═══════════════════════════════════════════
+   설정
+═══════════════════════════════════════════ */
+const API_BASE = (window.location.protocol === 'file:')
+  ? 'http://localhost:8000'      // 로컬 파일로 직접 열었을 때
+  : window.location.origin;     // ngrok 또는 서버 URL로 접속했을 때
+const API      = API_BASE + '/data';
+const PASSWORD = 'admin0000';
+const TICK     = 30; // 자동 갱신 주기(초)
+
+let allRows    = [];
+let prevTotal  = null;
+let timer      = null;
+let secLeft    = TICK;
+
+let lineChart  = null;
+let barChart   = null;
+let donutChart = null;
+
+/* ═══════════════════════════════════════════
+   로그인
+═══════════════════════════════════════════ */
+function login() {
+  const pw = document.getElementById('pwInp').value;
+  if (pw === PASSWORD) {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    sessionStorage.setItem('auth', '1');
+    addLog('로그인 성공');
+    fetchData();
+    startTick();
+  } else {
+    document.getElementById('loginErr').textContent = '비밀번호가 올바르지 않습니다.';
+  }
+}
+
+// 세션 복원
+if (sessionStorage.getItem('auth') === '1') {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('dashboard').style.display  = 'block';
+  fetchData();
+  startTick();
+}
+
+/* ═══════════════════════════════════════════
+   데이터 fetch
+═══════════════════════════════════════════ */
+async function fetchData() {
+  try {
+    const res = await fetch(API, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || '알 수 없는 오류');
+
+    // 신규 접수 감지
+    if (prevTotal !== null && json.total > prevTotal) {
+      const n = json.total - prevTotal;
+      showAlert(`신규 지원자 ${n}명이 접수되었습니다! (누계 ${json.total}명)`);
+      addLog(`신규 접수 감지: +${n}명 (누계 ${json.total}명)`);
+    }
+    prevTotal = json.total;
+    allRows   = json.records || [];
+
+    renderStats(json);
+    renderCharts(json);
+    applyFilter();
+
+    document.getElementById('lastUpdated').textContent = '갱신: ' + json.updated_at;
+
+  } catch (e) {
+    addLog('데이터 갱신 오류: ' + e.message, true);
+  }
+  resetTick();
+}
+
+/* ═══════════════════════════════════════════
+   통계 카드
+═══════════════════════════════════════════ */
+function renderStats(j) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+  set('sTotal', j.total);
+  set('sToday', j.today);
+  set('sWeek',  j.week);
+  set('sLevel', `${j.basic} / ${j.advanced}`);
+  set('sBasic', j.basic);
+  set('sAdv',   j.advanced);
+  set('chartTotal', j.total);
+
+  const dc = j.dept_counts || {};
+  set('sDept', Object.keys(dc).length);
+
+  const cc = j.course_counts || {};
+  ['A1','A2','A3','B1','B2','B3'].forEach(c => set('c'+c, cc[c] || 0));
+}
+
+/* ═══════════════════════════════════════════
+   차트 렌더링
+═══════════════════════════════════════════ */
+function renderCharts(j) {
+  renderLine(j.daily_counts  || {});
+  renderBar( j.dept_counts   || {});
+  renderDonut(j.basic, j.advanced, j.course_counts || {});
+}
+
+// 일별 추이 라인 차트
+function renderLine(dc) {
+  const dates  = Object.keys(dc).sort();
+  const counts = dates.map(d => Number(dc[d]));
+  if (lineChart) lineChart.destroy();
+
+  lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: dates.map(d => d.slice(5)),
+      datasets: [{
+        data: counts,
+        borderColor: '#e8566a',
+        backgroundColor: 'rgba(232,86,106,.12)',
+        fill: true, tension: 0.4,
+        pointBackgroundColor: '#e8566a',
+        pointRadius: 5, pointHoverRadius: 7,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: i  => i[0].label + '일',
+            label: i  => ` ${i.raw}명 접수`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f1f5f9' } }
+      }
+    }
+  });
+}
+
+// 학과별 바 차트
+function renderBar(dc) {
+  const labels = Object.keys(dc);
+  const values = labels.map(k => Number(dc[k]));
+  if (barChart) barChart.destroy();
+
+  // 레이블 약어 처리
+  const shortLabels = labels.map(l => l.length > 8 ? l.slice(0, 8) + '…' : l);
+
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: shortLabels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(102,126,234,.75)',
+        borderRadius: 5, borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, indexAxis: labels.length > 4 ? 'y' : 'x',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (i) => labels[i[0].dataIndex],
+            label: (i) => ` ${i.raw}명`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// 과정별 도넛 차트 (초급/중급 + 세부 과목)
+function renderDonut(basic, advanced, cc) {
+  if (donutChart) donutChart.destroy();
+
+  const courseLabels = ['A1 수리AI','A2 AI프로그래밍','A3 AI데이터과학기초',
+                        'B1 데이터과학응용','B2 AI핵심이론','B3 산업분야AX'];
+  const courseCodes  = ['A1','A2','A3','B1','B2','B3'];
+  const courseData   = courseCodes.map(c => Number(cc[c] || 0));
+  const colors = [
+    'rgba(59,130,246,.8)','rgba(96,165,250,.8)','rgba(147,197,253,.8)',
+    'rgba(124,58,237,.8)','rgba(167,139,250,.8)','rgba(196,181,253,.8)'
+  ];
+
+  donutChart = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: courseLabels,
+      datasets: [{
+        data: courseData,
+        backgroundColor: colors,
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+        tooltip: { callbacks: { label: i => ` ${i.label}: ${i.raw}명` } }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   검색 & 테이블
+═══════════════════════════════════════════ */
+function applyFilter() {
+  const kw     = document.getElementById('fKeyword').value.toLowerCase().trim();
+  const from   = document.getElementById('fFrom').value;
+  const to     = document.getElementById('fTo').value;
+  const level  = document.getElementById('fLevel').value;
+  const dept   = document.getElementById('fDept').value.toLowerCase().trim();
+  const course = document.getElementById('fCourse').value;
+
+  const rows = allRows.filter(r => {
+    if (kw && ![(r.name||''), (r.student_id||''), (r.department||'')]
+      .some(v => v.toLowerCase().includes(kw))) return false;
+    if (from && r.date && r.date < from) return false;
+    if (to   && r.date && r.date > to)   return false;
+    if (level && r.level !== level)       return false;
+    if (dept  && !(r.department||'').toLowerCase().includes(dept)) return false;
+    if (course) {
+      const allCourses = (r.basic_courses || '') + (r.advanced_courses || '');
+      if (!allCourses.includes(course)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('resultCnt').textContent = rows.length;
+  renderTable(rows);
+}
+
+function resetFilter() {
+  ['fKeyword','fFrom','fTo','fDept'].forEach(id => document.getElementById(id).value = '');
+  ['fLevel','fCourse'].forEach(id => document.getElementById(id).value = '');
+  applyFilter();
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td class="empty-td" colspan="15">검색 결과가 없습니다.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const lvBadge = r.level === '초급'
+      ? '<span class="pill pill-b">초급</span>'
+      : r.level === '중급'
+      ? '<span class="pill pill-p">중급</span>'
+      : (r.level || '');
+
+    const bChips = extractCodes(r.basic_courses).map(c =>
+      `<span class="chip chip-a">${c}</span>`).join('');
+    const aChips = extractCodes(r.advanced_courses).map(c =>
+      `<span class="chip chip-b">${c}</span>`).join('');
+
+    const cr = s => `<div class="credit-cell">${s || '—'}</div>`;
+
+    return `<tr>
+      <td style="color:var(--text-3);font-size:11px">${i+1}</td>
+      <td style="white-space:nowrap;font-size:12px">${r.timestamp||'—'}</td>
+      <td>${r.department||'—'}</td>
+      <td style="font-family:monospace">${r.student_id||'—'}</td>
+      <td>${r.grade||'—'}</td>
+      <td style="font-weight:700;color:var(--text-1)">${r.name||'—'}</td>
+      <td style="font-family:monospace;font-size:12px">${r.phone||'—'}</td>
+      <td>${lvBadge}</td>
+      <td><div class="chip-wrap">${bChips||'<span style="color:var(--text-3)">—</span>'}</div></td>
+      <td><div class="chip-wrap">${aChips||'<span style="color:var(--text-3)">—</span>'}</div></td>
+      <td>${cr(r.a1_credits)}</td>
+      <td>${cr(r.a2_credits)}</td>
+      <td>${cr(r.a3_credits)}</td>
+      <td>${cr(r.b1_credits)}</td>
+      <td>${cr(r.b2_credits)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function extractCodes(txt) {
+  if (!txt) return [];
+  return [...new Set((txt.match(/[AB][1-3]/g)||[]))];
+}
+
+/* ═══════════════════════════════════════════
+   알림 배너
+═══════════════════════════════════════════ */
+let alertTimer = null;
+function showAlert(msg) {
+  const el = document.getElementById('alertBanner');
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (alertTimer) clearTimeout(alertTimer);
+  alertTimer = setTimeout(() => el.style.display = 'none', 12000);
+}
+
+/* ═══════════════════════════════════════════
+   카운트다운 타이머
+═══════════════════════════════════════════ */
+function startTick() {
+  secLeft = TICK;
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    secLeft--;
+    document.getElementById('countdown').textContent = `${secLeft}초 후 갱신`;
+    if (secLeft <= 0) { clearInterval(timer); fetchData(); }
+  }, 1000);
+}
+function resetTick() { startTick(); }
+
+/* ═══════════════════════════════════════════
+   활동 로그 — R 서버 CSV로 저장
+   기록 대상: 로그인, 신규 접수 감지, 수동 새로고침, 오류
+   제외 대상: 30초 자동 갱신
+═══════════════════════════════════════════ */
+async function addLog(msg, isErr = false) {
+  try {
+    await fetch(API_BASE + '/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: (isErr ? '[오류] ' : '') + msg })
+    });
+  } catch (_) {
+    // 로그 전송 실패는 무시 (API 미연결 상태 등)
+  }
+}
+</script>
+</body>
+</html>
